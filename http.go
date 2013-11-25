@@ -140,6 +140,10 @@ func (p *HTTPPool) PickPeer(key string) (ProtoGetter, bool) {
 	return nil, false
 }
 
+func (p *HTTPPool) GetAllPeers() (peer []ProtoGetter) {
+	return p.peerGetters
+}
+
 func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Parse request.
 	if !strings.HasPrefix(r.URL.Path, p.basePath) {
@@ -183,7 +187,7 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/x-protobuf")
 		w.Write(body)
 	case "DELETE":
-		group.Remove(key)
+		group.removeByPeer(key)
 	}
 }
 
@@ -203,7 +207,7 @@ func (h *httpGetter) Get(context Context, in *pb.GetRequest, out *pb.GetResponse
 		url.QueryEscape(in.GetGroup()),
 		url.QueryEscape(in.GetKey()),
 	)
-	req, err := http.NewRequest("GET", u, nil)
+	req, err := http.NewRequest(method, u, nil)
 	if err != nil {
 		return err
 	}
@@ -231,4 +235,12 @@ func (h *httpGetter) Get(context Context, in *pb.GetRequest, out *pb.GetResponse
 		return fmt.Errorf("decoding response body: %v", err)
 	}
 	return nil
+}
+
+func (h *httpGetter) Get(context Context, in *pb.GetRequest, out *pb.GetResponse) error {
+	return h.call(context, in, out, "GET")
+}
+
+func (h *httpGetter) Delete(context Context, in *pb.GetRequest, out *pb.GetResponse) error {
+	return h.call(context, in, out, "DELETE")
 }
